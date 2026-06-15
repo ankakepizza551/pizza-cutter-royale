@@ -611,6 +611,19 @@ class PizzaGame {
       this.resetToSetup();
     });
 
+    // Help modal
+    document.getElementById('help-btn').addEventListener('click', () => {
+      document.getElementById('help-overlay').classList.add('active');
+    });
+    document.getElementById('help-close-btn').addEventListener('click', () => {
+      document.getElementById('help-overlay').classList.remove('active');
+    });
+    document.getElementById('help-overlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('help-overlay')) {
+        document.getElementById('help-overlay').classList.remove('active');
+      }
+    });
+
     // Keyboard controls
     window.addEventListener('keydown', (e) => {
       this.keys[e.code] = true;
@@ -1199,11 +1212,11 @@ class PizzaGame {
 
     if (this.winMode === 'ROUNDS') {
       const v = parseInt(document.getElementById('max-rounds-input').value, 10);
-      this.maxRounds = (isNaN(v) || v < 1) ? 3 : Math.min(v, 20);
+      this.maxRounds = (isNaN(v) || v < 1) ? 5 : Math.min(v, 20);
     } else {
       const ws = parseInt(document.getElementById('win-score-input').value, 10);
       const mr = parseInt(document.getElementById('max-rounds-score-input').value, 10);
-      this.winScore = (isNaN(ws) || ws < 50) ? 500 : Math.min(ws, 9999);
+      this.winScore = (isNaN(ws) || ws < 50) ? 5000 : Math.min(ws, 99999);
       this.maxRounds = (isNaN(mr) || mr < 1) ? 10 : Math.min(mr, 30);
     }
 
