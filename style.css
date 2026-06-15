@@ -264,10 +264,15 @@ body {
   border-radius: 8px;
   padding: 8px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   outline: none;
   font-family: var(--font-display);
   font-weight: 600;
   cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .char-preview {
