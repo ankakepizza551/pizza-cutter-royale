@@ -211,6 +211,8 @@ body {
   gap: 10px;
   transition: all 0.3s ease;
   position: relative;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .setup-card.active-player {
@@ -275,6 +277,8 @@ body {
   background: rgba(255, 255, 255, 0.02);
   padding: 8px;
   border-radius: 8px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .char-avatar {
