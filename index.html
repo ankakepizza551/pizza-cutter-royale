@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ピザ・カッター・ロワイヤル (Pizza Cutter Royale)</title>
+  <!-- Google Fonts: Outfit for sleek modern UI, Fredoka for playful game feel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=2.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ピザカッター">
+  <link rel="apple-touch-icon" href="icon.png">
+  <!-- PeerJS WebRTC Library -->
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <div id="game-container">
+    <!-- 1. メインメニュー / キャラクター選択画面 -->
+    <div id="setup-screen" class="screen active">
+      <div class="glass-panel main-panel">
+        <h1 class="game-title animate-title">PIZZA CUTTER<br><span class="highlight">ROYALE</span></h1>
+        <p class="subtitle">ピザ・カッター・ロワイヤル</p>
+        
+        <div class="rules-preview">
+          <h3>🍕 ルール説明</h3>
+          <p>8方向から一斉にピザをカット！1ラウンドに<strong>2回カット</strong>を入れ、切り分けたピースを競い合います。お皿に最も近く、自分のカットで切り離したピースを獲得。トッピングを集めて最高スコアを目指そう！</p>
+        </div>
+
+        <!-- 勝利条件設定 -->
+        <div class="win-condition-panel">
+          <h3>🏆 勝利条件</h3>
+          <div class="win-mode-tabs">
+            <button id="wm-rounds-btn" class="btn mode-tab active">🔄 ラウンド制</button>
+            <button id="wm-score-btn" class="btn mode-tab">🎯 先取りポイント制</button>
+          </div>
+          <div id="wm-rounds-config" class="wm-config">
+            <label class="setting-label">ラウンド数 <input type="number" id="max-rounds-input" value="3" min="1" max="20" class="setting-input"> ラウンド</label>
+          </div>
+          <div id="wm-score-config" class="wm-config" style="display:none;">
+            <label class="setting-label">目標ポイント <input type="number" id="win-score-input" value="500" min="50" max="9999" step="50" class="setting-input"> 点</label>
+            <label class="setting-label">最大ラウンド数 <input type="number" id="max-rounds-score-input" value="10" min="1" max="30" class="setting-input"> ラウンド</label>
+          </div>
+        </div>
+
+        <!-- マルチプレイ設定コントロール -->
+        <div class="multiplayer-modes">
+          <button id="mode-local-btn" class="btn mode-tab active">👥 ローカル対戦</button>
+          <button id="mode-online-btn" class="btn mode-tab">🌐 オンライン対戦</button>
+        </div>
+        
+        <div id="online-setup-panel" class="online-panel" style="display: none;">
+          <div class="online-group">
+            <button id="host-room-btn" class="btn btn-primary">部屋を作る (Host)</button>
+            <span id="host-room-id-display" class="room-badge" style="display: none;">部屋ID: <strong id="room-id-val">-</strong></span>
+          </div>
+          <div class="online-separator">または</div>
+          <div class="online-group">
+            <input type="text" id="join-room-id-input" placeholder="部屋ID (4桁)" maxlength="4">
+            <button id="join-room-btn" class="btn btn-primary">接続 (Join)</button>
+          </div>
+          <p id="online-status-text" class="status-msg">ローカル接続モード</p>
+        </div>
+
+        <div class="setup-grid">
+          <!-- 8人分のプレイヤー設定カードをJSで動的に生成します -->
+          <div id="player-setup-cards" class="player-cards-container"></div>
+        </div>
+
+        <div class="actions">
+          <button id="start-game-btn" class="btn btn-primary btn-lg">ゲーム開始 🍕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. メインゲーム画面 -->
+    <div id="game-screen" class="screen">
+      <!-- HUD (Heads Up Display) -->
+      <div id="hud-top">
+        <div class="hud-item round-counter">ROUND <span id="current-round">1</span>/<span id="max-rounds-display">3</span></div>
+        <div id="phase-banner" class="hud-item phase-info">エイミング中 (Cut 1)</div>
+        <div class="hud-item timer-counter"><span id="timer-sec">10</span>s</div>
+      </div>
+
+      <!-- 中央のゲームエリア -->
+      <div id="canvas-container">
+        <canvas id="game-canvas" width="850" height="850"></canvas>
+      </div>
+
+      <!-- プレイヤー情報サイドバー (左右に分散配置) -->
+      <div id="players-sidebar-left" class="players-sidebar"></div>
+      <div id="players-sidebar-right" class="players-sidebar"></div>
+
+      <!-- 操作ガイド -->
+      <div id="controls-hint" class="controls-hint-overlay">
+        <div class="hint-content">
+          <h4>⌨️ 操作方法</h4>
+          <ul id="active-controls-list">
+            <!-- 動的にアクティブなプレイヤーのキーを表示 -->
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. ラウンド結果画面オーバーレイ -->
+    <div id="round-summary-overlay" class="overlay">
+      <div class="glass-panel summary-panel">
+        <h2 id="summary-title">ROUND <span id="summary-round-num">1</span> 結果</h2>
+        <div class="summary-list" id="round-score-list">
+          <!-- 各プレイヤーの獲得スコアをリスト表示 -->
+        </div>
+        <button id="next-round-btn" class="btn btn-primary">次のラウンドへ ➡️</button>
+      </div>
+    </div>
+
+    <!-- 4. ゲームオーバー（最終結果）画面オーバーレイ -->
+    <div id="game-over-overlay" class="overlay">
+      <div class="glass-panel game-over-panel">
+        <h1 class="crown-title">🏆 最終結果 🏆</h1>
+        <div class="podium" id="podium-container">
+          <!-- 1位, 2位, 3位の表彰台表示 -->
+        </div>
+        <div class="final-scores" id="final-scores-list">
+          <!-- 全プレイヤーの最終スコア -->
+        </div>
+        <button id="restart-game-btn" class="btn btn-primary btn-lg">もう一度遊ぶ 🔄</button>
+      </div>
+    </div>
+    <div id="version-badge" style="position: absolute; bottom: 8px; right: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.3); font-family: Outfit, sans-serif; pointer-events: none; z-index: 9999;">v2.0</div>
+  </div>
+
+  <!-- ゲームスクリプト -->
+  <script src="app.js?v=2.0"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(reg => {
+            console.log('Service Worker registered', reg);
+          })
+          .catch(err => console.error('Service Worker registration failed', err));
+      });
+
+      // Reload the page when the controlling service worker changes
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          console.log('New service worker active, reloading page...');
+          window.location.reload();
+        }
+      });
+    }
+  </script>
+</body>
+</html>
